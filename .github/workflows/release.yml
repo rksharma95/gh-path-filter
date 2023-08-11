@@ -1,0 +1,81 @@
+name: ci-release
+
+on:
+  push:
+    branches:
+      - "main"
+      - "v*"
+    paths:
+      - ".github/workflows/release.yml"
+      - "pkg/**"
+
+  create:
+    branches:
+      - "v*"
+
+jobs:
+  check:
+    name: Check what pkg were updated
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend}}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Check Branch and Set Base
+      id: base
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "BASE=main" >> $GITHUB_ENV
+            echo "TAG=latest" >> $GITHUB_ENV
+        else
+            previous_tag=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1))
+            echo "BASE=$previous_tag" >> $GITHUB_ENV
+            echo "TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        fi
+
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        base: ${{ env.BASE }}
+        filters: |
+          frontend:
+            - "pkg/frontend/**"
+          backend:
+            - "pkg/backend/**"
+
+  frontend:
+    name: Update and Release Frontend
+    needs: check
+    if: needs.check.outputs.frontend == 'true'
+    runs-on: ubuntu-20.04
+    permissions:
+      id-token: write 
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Release Frontend
+        run: |
+            echo "[Passed] Released Frontend Successfully with tag: ${{ env.TAG }}"
+
+  backend:
+    name: Update and Release Backend
+    needs: check
+    if: needs.check.outputs.backend == 'true'
+    runs-on: ubuntu-20.04
+    permissions:
+        id-token: write 
+    timeout-minutes: 60
+    steps:
+        - uses: actions/checkout@v3
+          with:
+            submodules: true
+
+        - name: Release Backend
+          run: |
+            echo "[Passed] Released Backend Successfully with tag: ${{ env.TAG }}"
