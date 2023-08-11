@@ -31,6 +31,10 @@ jobs:
             echo "BASE=main" >> $GITHUB_ENV
             echo "TAG=latest" >> $GITHUB_ENV
         else
+            git log --oneline
+            git rev-list --tags
+            git describe --abbrev=0 --tags --always $(git rev-list --tags)
+            git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1)
             previous_tag=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1))
             echo "BASE=$previous_tag" >> $GITHUB_ENV
             echo "TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
